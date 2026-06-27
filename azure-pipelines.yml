@@ -1,0 +1,48 @@
+trigger:
+- main
+
+variables:
+  # Aapke Docker Registry connection ka naam
+  dockerRegistryServiceConnection: 'ACR-ShehrBano' 
+  imageRepository: 'shehrbanoapp'
+  # Aapke ACR ka URL
+  containerRegistry: 'acrshehrbano011.azurecr.io' 
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  tag: '$(Build.BuildId)'
+
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+
+- stage: Deploy
+  displayName: Deploy to Azure App Service
+  dependsOn: Build
+  jobs:
+  - job: Deploy
+    displayName: Deploy
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: AzureWebAppContainer@1
+      displayName: 'Azure Web App on Container Deploy'
+      inputs:
+        # Aapke Azure Resource Manager connection ka naam
+        azureSubscription: 'ARM-ShehrBano' 
+        # Aapke Web App ka naam
+        appName: 'app-shehrbano-011' 
+        containers: '$(containerRegistry)/$(imageRepository):$(tag)'
